@@ -1,9 +1,21 @@
-/** Worktrees use isolated .t3 state; ambient T3CODE_HOME could otherwise select the live userdata database. */
+/** Worktrees use isolated Getter state; ambient home settings must not select the live database. */
 
+import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
+
+export const configuredHome = Config.all({
+  getter: Config.String("GETTER_HOME").pipe(Config.option),
+  legacy: Config.String("T3CODE_HOME").pipe(Config.option),
+}).pipe(
+  Config.map(({ getter, legacy }) =>
+    Option.fromUndefinedOr(
+      Option.getOrUndefined(getter)?.trim() || Option.getOrUndefined(legacy)?.trim() || undefined,
+    ),
+  ),
+);
 
 // Match worktrees/<name>; bare repos and GIT_COMMON_DIR need not use a directory named .git.
 const pointsAtLinkedWorktree = (gitFileContents: string, path: Path.Path): boolean => {
@@ -62,5 +74,5 @@ export const resolveWorktreeT3Home = Effect.fn("devHome.resolveWorktreeT3Home")(
     return undefined;
   }
   const path = yield* Path.Path;
-  return path.join(worktreePath, ".t3");
+  return path.join(worktreePath, ".getter-code");
 });

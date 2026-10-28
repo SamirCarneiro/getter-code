@@ -2,6 +2,7 @@
 import type * as NodeChildProcess from "node:child_process";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import { assert, it } from "@effect/vitest";
 import { SERVER_EXIT_CODE_STATE_DIR_OWNED } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
@@ -32,7 +33,9 @@ const spawnedChildren = vi.hoisted((): Array<NodeChildProcess.ChildProcess> => [
 vi.mock("node:child_process", async (importOriginal) => {
   const actual = await importOriginal<typeof NodeChildProcess>();
   const spawn = (...args: Parameters<typeof actual.spawn>) => {
-    const child = actual.spawn(...args);
+    const child = args[0].endsWith("t3.exe")
+      ? actual.spawn(process.execPath, [`${args[0]}.mjs`, ...(args[1] ?? [])], args[2])
+      : actual.spawn(...args);
     spawnedChildren.push(child);
     return child;
   };
@@ -115,9 +118,15 @@ const writeFakeRuntime = (
   childSource: string,
 ) =>
   Effect.gen(function* () {
-    const entryPath = path.join(versionDir, "t3");
+    const entryPath = path.join(
+      versionDir,
+      HostProcess.Platform.defaultValue() === "win32" ? "t3.exe" : "t3",
+    );
     yield* fs.makeDirectory(versionDir, { recursive: true });
     yield* fs.writeFileString(entryPath, `#!${process.execPath}\n${childSource}`);
+    if (HostProcess.Platform.defaultValue() === "win32") {
+      yield* fs.writeFileString(`${entryPath}.mjs`, childSource);
+    }
     yield* fs.chmod(entryPath, 0o755);
     yield* fs.writeFileString(
       path.join(versionDir, ".install-complete"),
@@ -317,6 +326,7 @@ if (context.update?.status === "pending") {
       const envPath = path.join(root, SERVICE_ENV_FILE);
       yield* fs.writeFileString(envPath, "T3CODE_TEST_SERVICE_TOKEN=initial\n");
       vi.stubEnv("T3CODE_HOME", root);
+      vi.stubEnv("GETTER_HOME", "/unused-getter-home");
       vi.stubEnv("T3CODE_TEST_SERVICE_TOKEN", "inherited");
       yield* Effect.addFinalizer(() => Effect.sync(() => vi.unstubAllEnvs()));
       yield* fs.makeDirectory(path.dirname(databasePath), { recursive: true });
@@ -327,6 +337,7 @@ import { appendFileSync, writeFileSync } from "node:fs";
 const context = JSON.parse(process.env.T3_SERVICE_LAUNCHER_CONTEXT);
 appendFileSync(${JSON.stringify(observationsPath)}, JSON.stringify({
   token: process.env.T3CODE_TEST_SERVICE_TOKEN,
+  home: process.env.GETTER_HOME,
   update: context.update?.status ?? "active",
 }) + "\\n");
 if (context.update?.status === "pending") {
@@ -373,9 +384,9 @@ if (context.update?.status === "pending") {
         .split("\n")
         .map((line) => JSON.parse(line));
       assert.deepEqual(observations, [
-        { token: "initial", update: "active" },
-        { token: "initial", update: "pending" },
-        { token: "initial", update: "rolled-back" },
+        { token: "initial", home: root, update: "active" },
+        { token: "initial", home: root, update: "pending" },
+        { token: "initial", home: root, update: "rolled-back" },
       ]);
       assert.equal(process.env.T3CODE_TEST_SERVICE_TOKEN, "inherited");
       assert.equal(yield* fs.readFileString(envPath), "T3CODE_TEST_SERVICE_TOKEN=changed\n");
@@ -451,7 +462,11 @@ if (context.update?.status === "pending") {
         assert.equal(state.activeVersion, "1.0.0");
         assert.equal(state.update?.status, "rolled-back");
         assert.equal(yield* fs.readFileString(databaseFile), original);
-        if (kind !== "file") assert.equal(yield* fs.readLink(databasePath), linkTarget);
+        if (kind !== "file")
+          assert.equal(
+            path.normalize(yield* fs.readLink(databasePath)),
+            path.normalize(linkTarget),
+          );
         assert.isFalse(yield* fs.exists(path.join(root, "original.sqlite")));
         assert.isFalse(yield* fs.exists(`${databasePath}-wal`));
         assert.isFalse(yield* fs.exists(`${databasePath}-shm`));

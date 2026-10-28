@@ -9,7 +9,15 @@ import { makeComponentLogger } from "./DesktopObservability.ts";
 // AppImage mounts change each run; the launcher must mount the image itself.
 const { logInfo, logWarning } = makeComponentLogger("desktop-cli-shim");
 
-export const MARKER = "Written by T3 Code: runs the desktop app's bundled t3 CLI.";
+export const MARKER = "Written by Getter Code: runs the desktop app's bundled t3 CLI.";
+
+export const WINDOWS_PUBLIC_ALIAS = [
+  "@echo off",
+  `rem ${MARKER}`,
+  "setlocal EnableExtensions DisableDelayedExpansion",
+  '"%~dp0..\\bin\\t3.cmd" %*',
+  "",
+].join("\r\n");
 
 const SERVER_ENTRY = "apps/server/dist/bin.mjs";
 
@@ -18,7 +26,7 @@ const shellWord = (value: string) => `'${value.replaceAll("'", `'"'"'`)}'`;
 const cmdText = (value: string) => value.replaceAll("%", "%%");
 const cmdWord = (value: string) => `"${cmdText(value)}"`;
 
-const MOVED = "T3 Code has moved or been removed. Open the app once to update this command.";
+const MOVED = "Getter Code has moved or been removed. Open the app once to update this command.";
 
 export type CliShimTarget =
   | { readonly kind: "appimage"; readonly appImage: string; readonly executableName: string }

@@ -5,8 +5,22 @@ import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import * as Effect from "effect/Effect";
+import * as ConfigProvider from "effect/ConfigProvider";
+import * as Option from "effect/Option";
 
-import { resolveGitWorktreePath, resolveWorktreeT3Home } from "./devHome.ts";
+import { configuredHome, resolveGitWorktreePath, resolveWorktreeT3Home } from "./devHome.ts";
+
+it.effect.each([
+  [{ GETTER_HOME: " /getter ", T3CODE_HOME: "/legacy" }, "/getter"],
+  [{ GETTER_HOME: " ", T3CODE_HOME: " /legacy " }, "/legacy"],
+  [{ T3CODE_HOME: "/legacy" }, "/legacy"],
+  [{}, undefined],
+] as const)("resolves Getter and legacy home settings: %o", ([env, expected]) =>
+  Effect.gen(function* () {
+    const home = yield* configuredHome;
+    assert.equal(Option.getOrUndefined(home), expected);
+  }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env })))),
+);
 
 const makeRepo = (
   kind:
@@ -72,11 +86,11 @@ describe("resolveGitWorktreePath", () => {
 });
 
 describe("resolveWorktreeT3Home", () => {
-  it.effect("answers with .t3 before the dev runner creates it", () =>
+  it.effect("answers with .getter-code before the dev runner creates it", () =>
     Effect.gen(function* () {
       const { root, nested } = yield* makeRepo("worktree");
       const home = yield* resolveWorktreeT3Home(nested);
-      assert.equal(home, NodePath.join(NodePath.resolve(root), ".t3"));
+      assert.equal(home, NodePath.join(NodePath.resolve(root), ".getter-code"));
       assert.isFalse(NodeFS.existsSync(home ?? ""));
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );

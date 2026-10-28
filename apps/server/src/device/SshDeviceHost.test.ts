@@ -144,6 +144,7 @@ it.effect("preserves installed status after probes and cleans failed agent activ
       expect(failed.stdout).toMatch(/^\[truncated\]/);
       expect(failed.stderr).toBe(failed.stdout.trim());
       expect(failed.stderr).toMatch(/PANIC: emulator SDK is broken$/);
+      expect(commandArgs.at(-1)?.at(-1)).toContain("$HOME/.getter-code/device/hosts/");
     }
     yield* host.platformAvailability("ios");
     expect((yield* host.summary).hubInstalled).toBe(true);

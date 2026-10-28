@@ -1,8 +1,22 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { cliArchiveTarCommand, newestCliReleaseVersion, parseChecksums } from "./cliRelease.ts";
+import {
+  cliArchiveTarCommand,
+  cliReleaseDownloadBaseUrl,
+  cliReleaseIndexPageUrl,
+  newestCliReleaseVersion,
+  parseChecksums,
+} from "./cliRelease.ts";
 
 describe("cliRelease", () => {
+  it("checks and downloads CLI updates from the Getter fork", () => {
+    expect(cliReleaseIndexPageUrl(2)).toBe(
+      "https://api.github.com/repos/SamirCarneiro/getter-code/releases?per_page=100&page=2",
+    );
+    expect(cliReleaseDownloadBaseUrl("1.2.3")).toBe(
+      "https://github.com/SamirCarneiro/getter-code/releases/download/v1.2.3",
+    );
+  });
   it("parses sha256sum output including binary-mode markers", () => {
     const checksums = parseChecksums(
       [

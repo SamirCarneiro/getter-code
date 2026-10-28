@@ -65,14 +65,20 @@ describe("desktop update button state", () => {
 });
 
 describe("desktop update UI helpers", () => {
-  it.each(["owner/repo/extra", "owner#notes/repo", "owner/repo?tab=notes"])(
-    "falls back to upstream for an invalid configured repository: %s",
+  it.each([
+    "owner/repo/extra",
+    "owner#notes/repo",
+    "owner/repo?tab=notes",
+    "pingdotgg/t3code",
+    "another/application",
+  ])(
+    "uses Getter releases when a configured repository is invalid or belongs to another app: %s",
     (repository) => {
       expect(getDesktopUpdateReleaseHistoryUrl(repository)).toBe(
-        "https://github.com/pingdotgg/t3code/releases",
+        "https://github.com/SamirCarneiro/getter-code/releases",
       );
       expect(getDesktopUpdateReleaseUrl("1.2.3", repository)).toBe(
-        "https://github.com/pingdotgg/t3code/releases/tag/v1.2.3",
+        "https://github.com/SamirCarneiro/getter-code/releases/tag/v1.2.3",
       );
     },
   );

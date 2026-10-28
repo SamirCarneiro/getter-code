@@ -33,7 +33,7 @@ const writeShim = (root: string, target: CliShimTarget) => {
 };
 
 const run = (shim: string, args: ReadonlyArray<string>, env: NodeJS.ProcessEnv = {}) =>
-  NodeChildProcess.spawnSync(shim, args, {
+  NodeChildProcess.spawnSync("sh", [shim, ...args], {
     encoding: "utf8",
     env: { PATH: process.env.PATH, ...env },
   });
@@ -83,7 +83,10 @@ describe("renderCliShim", () => {
     });
     expect(run(shim, []).stdout).toContain(`home=${root}/home`);
     expect(run(shim, [], { T3CODE_HOME: "/elsewhere" }).stdout).toContain("home=/elsewhere");
-    const relative = NodeChildProcess.spawnSync("./bin/t3", [], { cwd: root, encoding: "utf8" });
+    const relative = NodeChildProcess.spawnSync("sh", ["./bin/t3"], {
+      cwd: root,
+      encoding: "utf8",
+    });
     expect(relative.stdout).toContain(`cli=${shim}`);
   });
 

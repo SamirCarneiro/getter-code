@@ -13,9 +13,9 @@ const defaultInput = {
   platform: "darwin",
   processArch: "arm64",
   appVersion: "0.0.22",
-  appPath: "/Applications/T3 Code.app/Contents/Resources/app.asar",
+  appPath: "/Applications/Getter Code.app/Contents/Resources/app.asar",
   isPackaged: false,
-  resourcesPath: "/Applications/T3 Code.app/Contents/Resources",
+  resourcesPath: "/Applications/Getter Code.app/Contents/Resources",
   runningUnderArm64Translation: false,
 } satisfies DesktopEnvironment.MakeDesktopEnvironmentInput;
 
@@ -68,8 +68,32 @@ describe("DesktopEnvironment", () => {
       );
       const production = yield* makeEnvironment();
 
-      assert.equal(development.stateDir, "/Users/alice/.t3/dev");
-      assert.equal(production.stateDir, "/Users/alice/.t3/userdata");
+      assert.equal(development.stateDir, "/Users/alice/.getter-code/dev");
+      assert.equal(production.stateDir, "/Users/alice/.getter-code/userdata");
+      assert.equal(development.appUserModelId, "com.getter.code.dev");
+      assert.equal(production.appUserModelId, "com.getter.code");
+      assert.equal(production.displayName, "Getter Code (Beta)");
+      assert.equal(production.linuxDesktopEntryName, "com.getter.code.desktop");
+    }),
+  );
+
+  it.effect.each([
+    { T3CODE_HOME: " /isolated-getter " },
+    { GETTER_HOME: " /isolated-getter ", T3CODE_HOME: "/legacy" },
+    { GETTER_HOME: "   ", T3CODE_HOME: " /isolated-getter " },
+  ])("respects explicit data directories and Windows app identity overrides: %o", (homeEnv) =>
+    Effect.gen(function* () {
+      const environment = yield* makeEnvironment(
+        { platform: "win32" },
+        {
+          ...homeEnv,
+          T3CODE_DESKTOP_APP_USER_MODEL_ID: "com.getter.custom",
+          VITE_DEV_SERVER_URL: "http://localhost:5173",
+        },
+      );
+      assert.equal(environment.baseDir, "/isolated-getter");
+      assert.equal(environment.stateDir, "/isolated-getter/userdata");
+      assert.equal(environment.appUserModelId, "com.getter.custom");
     }),
   );
 });

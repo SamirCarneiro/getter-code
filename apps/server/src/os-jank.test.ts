@@ -1,4 +1,5 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
+import * as NodePath from "@effect/platform-node/NodePath";
 import { it as effectIt } from "@effect/vitest";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import { CommandAvailability, WindowsShellEnvironment } from "@t3tools/shared/shell";
@@ -8,9 +9,21 @@ import * as NodeChildProcess from "node:child_process";
 import * as NodeOS from "node:os";
 import { assert, it, vi } from "vite-plus/test";
 
-import { fixPath, hydratePosixHome } from "./os-jank.ts";
+import { fixPath, hydratePosixHome, resolveBaseDir } from "./os-jank.ts";
 
 vi.mock("node:child_process", { spy: true });
+
+effectIt.effect("isolates default CLI state and preserves explicit data directories", () =>
+  Effect.gen(function* () {
+    assert.equal(yield* resolveBaseDir(undefined), "/home/alice/.getter-code");
+    assert.equal(yield* resolveBaseDir(" "), "/home/alice/.getter-code");
+    assert.equal(yield* resolveBaseDir(" ~/.custom-getter "), "/home/alice/.custom-getter");
+    assert.equal(yield* resolveBaseDir("/explicit-state"), "/explicit-state");
+  }).pipe(
+    Effect.provideService(HostProcess.HomeDirectory, "/home/alice"),
+    Effect.provide(NodePath.layerPosix),
+  ),
+);
 
 it("hydrates HOME independently of a blank process HOME", () => {
   const originalHome = process.env.HOME;

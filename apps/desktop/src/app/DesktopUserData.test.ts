@@ -6,7 +6,7 @@ import * as Path from "effect/Path";
 
 import { resolveUserDataPath } from "./DesktopUserData.ts";
 
-it.effect.each(["t3code", "T3 Code (Alpha)"])(
+it.effect.each(["gettercode", "Getter Code (Alpha)"])(
   "preserves Windows credential keys from %s without copying browser databases",
   (sourceName) =>
     Effect.gen(function* () {
@@ -14,9 +14,9 @@ it.effect.each(["t3code", "T3 Code (Alpha)"])(
       const path = yield* Path.Path;
       const directory = yield* fs.makeTempDirectoryScoped({ prefix: "t3-v2-profile-" });
       const source = path.join(directory, sourceName);
-      const destination = path.join(directory, "t3code-v2");
+      const destination = path.join(directory, "gettercode-v2");
       const state = '{"os_crypt":{"encrypted_key":"test-encrypted-key"}}';
-      yield* fs.makeDirectory(path.join(directory, "T3 Code (Alpha)"), { recursive: true });
+      yield* fs.makeDirectory(path.join(directory, "Getter Code (Alpha)"), { recursive: true });
       yield* fs.makeDirectory(path.join(source, "IndexedDB"), { recursive: true });
       yield* fs.writeFileString(path.join(source, "Local State"), state);
       yield* fs.writeFileString(path.join(source, "IndexedDB", "LOCK"), "V1 owns this database");
@@ -38,5 +38,30 @@ it.effect.each(["t3code", "T3 Code (Alpha)"])(
         yield* fs.readFileString(path.join(destination, "Local State")),
         "existing V2 state",
       );
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+);
+
+it.effect.each([false, true])(
+  "keeps Getter's Chromium profile separate from existing T3 profiles (development: %s)",
+  (isDevelopment) =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const directory = yield* fs.makeTempDirectoryScoped({ prefix: "getter-profile-isolation-" });
+      for (const name of ["t3code", "t3code-v2", "T3 Code (Alpha)", "T3 Code (Dev)"]) {
+        const source = path.join(directory, name);
+        yield* fs.makeDirectory(source, { recursive: true });
+        yield* fs.writeFileString(path.join(source, "Local State"), "upstream credential keys");
+      }
+      const destination = yield* resolveUserDataPath({
+        appDataDirectory: directory,
+        isDevelopment,
+        platform: "win32",
+      });
+      assert.equal(
+        destination,
+        path.join(directory, isDevelopment ? "gettercode-dev" : "gettercode-v2"),
+      );
+      assert.isFalse(yield* fs.exists(path.join(destination, "Local State")));
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
 );

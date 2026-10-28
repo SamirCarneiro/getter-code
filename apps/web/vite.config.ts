@@ -10,6 +10,7 @@ import { defineProject, type TestProjectInlineConfiguration } from "vite-plus/te
 import "vite-plus/test/config";
 import { defineConfig, type Connect, type Plugin } from "vite-plus";
 import * as Hash from "effect/Hash";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import pkg from "./package.json" with { type: "json" };
 import pdfjsPkg from "pdfjs-dist/package.json" with { type: "json" };
 
@@ -94,7 +95,10 @@ const unitTestProject = {
 } satisfies TestProjectInlineConfiguration;
 
 // Hash checkout paths to ports 61000-64999; Vitest's fixed port collides under inherited strictPort.
-const browserTestApiPort = 61_000 + ((Hash.string(import.meta.dirname) >>> 0) % 4_000);
+const browserTestApiPort =
+  HostProcess.Platform.defaultValue() === "win32"
+    ? 0
+    : 61_000 + ((Hash.string(import.meta.dirname) >>> 0) % 4_000);
 
 const browserTestProject = {
   extends: true,

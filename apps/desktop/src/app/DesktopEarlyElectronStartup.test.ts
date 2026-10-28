@@ -11,9 +11,12 @@ import {
 describe("DesktopEarlyElectronStartup", () => {
   const joinPath = NodePath.posix.join;
 
-  it("reads the persisted linux password-store preference before Electron is ready", () => {
+  it.each([
+    { T3CODE_HOME: "/home/user/.t3-test" },
+    { GETTER_HOME: "/home/user/.t3-test", T3CODE_HOME: "/unused-legacy" },
+  ])("reads the persisted linux password-store preference before Electron is ready: %o", (env) => {
     const preference = resolveEarlyLinuxPasswordStorePreference({
-      env: { T3CODE_HOME: "/home/user/.t3-test" },
+      env,
       homeDirectory: "/home/user",
       joinPath,
       readFileString: (path) => {

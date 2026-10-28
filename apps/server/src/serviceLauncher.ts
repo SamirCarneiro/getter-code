@@ -458,7 +458,7 @@ export class Launcher {
   ) {
     this.#baseDir = baseDir;
     this.#backupSpaceProbe = options.backupSpaceProbe;
-    this.#environment = { ...(options.environment ?? process.env) };
+    this.#environment = { ...(options.environment ?? process.env), GETTER_HOME: baseDir };
     this.#statePath = NodePath.join(baseDir, "runtime", SERVICE_STATE_FILE);
     this.#state = state;
   }

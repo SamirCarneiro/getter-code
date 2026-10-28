@@ -1,8 +1,12 @@
-# T3 Code
+# Getter Code
 
-T3 Code is an "agent harness control surface". It enables control of the agents on your machine with a best-in-class mobile app ([iOS](https://apps.apple.com/us/app/t3-code-remote-claude-more/id6787819824), [Android](https://play.google.com/store/apps/details?id=com.t3tools.t3code)), [web app](https://app.t3.codes) and [Electron-based desktop app](https://t3.codes).
+Getter Code is Getter's desktop and web workspace for coding agents, based on [T3 Code](https://github.com/pingdotgg/t3code). It runs the agents on your computer and preserves the upstream protocol for compatible remote clients. Getter releases will be published in [this repository](https://github.com/SamirCarneiro/getter-code/releases); a fork installer has not been published yet.
 
-Works with your subscriptions on Claude Code, Codex, Cursor, Grok Build, OpenCode, and Google Antigravity. If they're set up on your computer, T3 Code can control them.
+On Windows, build and start from source with [Start-Getter-Code.ps1](./Start-Getter-Code.ps1). The [Getter setup guide](./docs/operations/getter-code.md) covers the runtime, provider setup, and isolated data directory. The upstream download and `npx` instructions below are retained as reference.
+
+Works with your subscriptions on Claude Code, Codex, Cursor, Grok Build, OpenCode, and Google Antigravity. If they're set up on your computer, Getter Code can control them.
+
+T3 Code is developed by T3 Tools Inc. This fork retains its [MIT license](./LICENSE), copyright notice, and third-party notices. The application icons currently retain the upstream artwork. The remaining installation and contribution notes below describe the upstream distribution.
 
 ## "Wait, what are you selling me?"
 

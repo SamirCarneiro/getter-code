@@ -8,7 +8,12 @@ import * as Path from "effect/Path";
 import { HttpClient, HttpClientResponse } from "effect/http";
 import { afterEach, vi } from "vite-plus/test";
 
-import { repointLauncher, resolveLauncherPath, resolveNewestVersion } from "./update.ts";
+import {
+  findWindowsShim,
+  repointLauncher,
+  resolveLauncherPath,
+  resolveNewestVersion,
+} from "./update.ts";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -18,7 +23,7 @@ it.effect("authenticates each release page until the requested channel is found"
     const httpClient = HttpClient.make((request) => {
       const url = new URL(request.url);
       assert.equal(url.origin, "https://api.github.com");
-      assert.equal(url.pathname, "/repos/pingdotgg/t3code/releases");
+      assert.equal(url.pathname, "/repos/SamirCarneiro/getter-code/releases");
       assert.equal(request.headers.accept, "application/vnd.github+json");
       assert.equal(request.headers.authorization, "Bearer gh-token");
       const page = url.searchParams.get("page") ?? "";
@@ -36,6 +41,26 @@ it.effect("authenticates each release page until the requested channel is found"
 );
 
 it.layer(NodeServices.layer)("t3 update launcher", (it) => {
+  it.effect("finds the Getter Windows installer shim without using the upstream command", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const root = yield* fs.makeTempDirectoryScoped({ prefix: "getter-update-shim-" });
+      const executable = path.join(root, "runtime", "t3.exe");
+      const shim = path.join(root, "getter-code.cmd");
+      yield* fs.writeFileString(shim, `@echo off\r\n"${executable}" %*`);
+      yield* fs.writeFileString(
+        path.join(root, "t3.cmd"),
+        '@echo off\r\n"C:\\upstream\\t3.exe" %*',
+      );
+      assert.equal(
+        yield* findWindowsShim(executable).pipe(
+          Effect.provideService(HostProcess.Environment, { PATH: root }),
+        ),
+        shim,
+      );
+    }).pipe(Effect.scoped),
+  );
   it.effect("repoints a symlink that lives in a runtime versions tree", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
@@ -107,7 +132,9 @@ it.layer(NodeServices.layer)("t3 update launcher", (it) => {
       const bare = yield* resolveLauncherPath.pipe(
         Effect.provideService(HostProcess.InvokedAs, "t3"),
         Effect.provideService(HostProcess.Environment, {
-          PATH: `${path.join(root, "missing")}:${path.join(root, "bin")}`,
+          PATH: [path.join(root, "missing"), path.join(root, "bin")].join(
+            path.sep === "\\" ? ";" : ":",
+          ),
         }),
         Effect.provideService(HostProcess.WorkingDirectory, root),
       );
@@ -125,6 +152,6 @@ it.layer(NodeServices.layer)("t3 update launcher", (it) => {
       assert.equal(bare, launcher);
       assert.equal(relative, launcher);
       assert.equal(absent, undefined);
-    }).pipe(Effect.scoped, Effect.provideService(HostProcess.Platform, "linux")),
+    }).pipe(Effect.scoped),
   );
 });

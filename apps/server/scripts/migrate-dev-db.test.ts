@@ -1,4 +1,7 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
+import * as HostProcess from "@t3tools/shared/HostProcess";
+// @effect-diagnostics-next-line nodeBuiltinImport:off -- FileSystem.symlink has no Windows junction option.
+import * as NodeFSP from "node:fs/promises";
 import { assert, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -285,17 +288,34 @@ it.layer(NodeServices.layer)("migrate-dev-db", (it) => {
     }),
   );
 
-  it.effect("refuses to rebuild the shared home", () =>
-    Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem;
-      const sourceDir = yield* fs.makeTempDirectoryScoped({ prefix: "migrate-dev-db-shared-" });
-      const source = yield* createFixtureSource(sourceDir);
+  it.effect.each(["direct", "getter-userdata-link", "legacy-userdata-link"] as const)(
+    "refuses to rebuild the shared home through %s",
+    (mode) =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const home = yield* fs.makeTempDirectoryScoped({ prefix: "migrate-dev-db-shared-" });
+        const sourceDir = path.join(home, ".getter-code");
+        const source = yield* createFixtureSource(sourceDir);
+        const baseDir = mode === "direct" ? sourceDir : path.join(home, "sandbox");
+        if (mode !== "direct") {
+          const targetHome = mode === "legacy-userdata-link" ? path.join(home, ".t3") : sourceDir;
+          if (mode === "legacy-userdata-link") yield* createFixtureSource(targetHome);
+          yield* fs.makeDirectory(baseDir);
+          yield* Effect.promise(() =>
+            NodeFSP.symlink(
+              path.join(targetHome, "userdata"),
+              path.join(baseDir, "userdata"),
+              HostProcess.Platform.defaultValue() === "win32" ? "junction" : "dir",
+            ),
+          );
+        }
 
-      const error = yield* runMigrateDevDb(
-        { baseDir: sourceDir, source, projects: 5, threadsPerProject: 10 },
-        { sharedHome: sourceDir },
-      ).pipe(Effect.flip);
-      assert.equal(error._tag, "MigrateDevDbSharedHomeError");
-    }),
+        const error = yield* runMigrateDevDb(
+          { baseDir, source, projects: 5, threadsPerProject: 10 },
+          { sharedHome: sourceDir },
+        ).pipe(Effect.provideService(HostProcess.HomeDirectory, home), Effect.flip);
+        assert.equal(error._tag, "MigrateDevDbSharedHomeError");
+      }),
   );
 });
